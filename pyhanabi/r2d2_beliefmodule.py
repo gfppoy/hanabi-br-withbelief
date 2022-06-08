@@ -265,94 +265,16 @@ class R2D2Agent(torch.jit.ScriptModule):
         obsize, ibsize, num_player = 0, 0, 0
         priv_s = obs["priv_s"].detach()
 
-        #if self.vdn:
-        #    nopeak_mask = torch.triu(torch.ones((1, 6, 6)), diagonal=1)
-        #    nopeak_mask = (nopeak_mask == 0).to("cuda:1")
-
-        #    obsize, ibsize, num_player = obs["priv_s"].size()[:3]
-
-        #    priv_s[:,:,:,433:783] = 0
-
-        #    if self.belief_module.use: 
-        #        #TODO: might be mistake that for each player only do half the steps, do for all? 
-        #        # src is bs x seq_len x 2 x 15
-        #        # trg is bs x seq_len x 2 x 7
-        #        src, trg = self.belief_module.get_samples(obs["priv_s"], obs["own_hand"], torch.zeros(obs["priv_s"].size(1), dtype=torch.int) + obs["priv_s"].size(0), device="cuda:1")
-
-        #        leftover = src.size(1)%4
-        #        for j in range(src.size(1)//4):
-        #            temp = torch.zeros(([2*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-        #            for i in range(2):
-        #                if i == 0:
-        #                    temp[:] = src[:, :, i, :].repeat([2, 1, 1])
-        #                    temp[0:src.size(0), 4*j+1:, :] = 205
-        #                    temp[src.size(0):2*src.size(0), 4*j+3:, :] = 205
-        #                    targets = torch.cat((trg[:, 4*j, i, :-1], 
-        #                                        trg[:, 4*j+2, i, :-1]), dim=0).detach()
-        #                    preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-
-        #                    priv_s[4*j,:,i,433:563] = preds[0:src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-        #                    priv_s[4*j+2,:,i,433:563] = preds[src.size(0):2*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-
-        #                else:
-        #                    temp[:] = src[:, :, i, :].repeat([2, 1, 1])
-        #                    temp[0:src.size(0), 4*j+2:, :] = 205
-        #                    temp[src.size(0):2*src.size(0), 4*j+4:, :] = 205
-        #                    targets = torch.cat((trg[:, 4*j+1, i, :-1],
-        #                                        trg[:, 4*j+3, i, :-1]), dim=0).detach()
-        #                    preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-
-        #                    priv_s[4*j+1,:,i,433:563] = preds[0:src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-        #                    priv_s[4*j+3,:,i,433:563] = preds[src.size(0):2*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-
-        #        if leftover:
-        #            for i in range(2):
-        #                if i == 0:
-        #                    temp = torch.zeros(([(leftover+1)//2*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-        #                    temp[:] = src[:, :, i, :].repeat([(leftover+1)//2, 1, 1])
-        #                    for k in range((leftover+1)//2):
-        #                        temp[k*src.size(0):(k+1)*src.size(0), src.size(1)-leftover+2*k+1:, :] = 205
-        #                    targets = trg[:, src.size(1)-leftover, i, :-1].detach()
-        #                    for k in range(2, leftover, 2):
-        #                        targets = torch.cat((targets, trg[:, src.size(1)-leftover+k, i, :-1]), dim=0).detach()
-
-        #                    preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-        #                    count = 0
-        #                    for k in range(0, leftover, 2):
-        #                        priv_s[src.size(1)-leftover+k,:,i,433:563] = preds[count*src.size(0):(count+1)*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-        #                        count += 1
-        #                
-        #                if i == 1:
-        #                    if leftover >= 2:
-        #                        temp = torch.zeros(([(leftover)//2*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-        #                        temp[:] = src[:, :, i, :].repeat([(leftover)//2, 1, 1])
-        #                        for k in range((leftover)//2):
-        #                            temp[k*src.size(0):(k+1)*src.size(0), src.size(1)-leftover+2*k+2:, :] = 205
-        #                        targets = trg[:, src.size(1)-leftover+1, i, :-1].detach()
-        #                        for k in range(2,leftover,2):
-        #                            targets = torch.cat((targets, trg[:, src.size(1)-leftover+k, i, :-1]), dim=0).detach()
-
-        #                        preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-        #                        count = 0
-        #                        for k in range(1, leftover, 2):
-        #                            priv_s[src.size(1)-leftover+k,:,i,433:563] = preds[count*src.size(0):(count+1)*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-        #                            count += 1
-        #    
-        #    priv_s = priv_s.flatten(0, 2)
-        #    legal_move = obs["legal_move"].flatten(0, 2)
-        #    eps = obs["eps"].flatten(0, 2)
-        #else:
         nopeak_mask = torch.triu(torch.ones((1, 6, 6)), diagonal=1)
         nopeak_mask = (nopeak_mask == 0).to(self.device)
 
         obsize, ibsize = obs["priv_s"].size()[:2]
         num_player = 1
             
-        #priv_s[torch.zeros(obs["priv_s"].size(1), dtype=torch.int) + obs["priv_s"].size(0)-1, range(obs["priv_s"].size(0), 433:783] = 0
         assert(not self.vdn)
-        #if self.belief_module.use:
-            # src is bs x seq_len x 15
-            # trg is bs x seq_len x 7
+        
+        # src is bs x seq_len x 15, where each of the 15 tokens describe a different observable environment feature
+        
         if obs["priv_s"].size(1) == 1:
             priv_s = priv_s.transpose(0, 1)
             bs = obs["priv_s"].size(0)
@@ -360,15 +282,6 @@ class R2D2Agent(torch.jit.ScriptModule):
             src, _  = self.belief_module.get_samples_one_player(torch.cat([obs["priv_s"].transpose(0,1), torch.zeros((79, bs, 838), device=self.device)]), obs["own_hand"].transpose(0,1), torch.zeros((bs), dtype=torch.long, device=self.device) + seq_len, device=self.device)
         else:
             src, _ = self.belief_module.get_samples_one_player(torch.cat([obs["priv_s"], torch.zeros((80-obs["priv_s"].size(0), obs["priv_s"].size(1), 838), device=self.device)]), obs["own_hand"], torch.zeros((obs["priv_s"].size(1)), dtype=torch.long, device=self.device) + obs["priv_s"].size(0), device=self.device)
-
-        #  temp = torch.zeros(([src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1") # bs x seq_len x 15
-        #  for j in range(src.size(1)):
-        #      temp[:] = src[:, :, :]
-        #      temp[:, j+1:, :] = 205
-        #      preds = self.belief_module(temp, trg[:, j, :-1].long(), None, nopeak_mask)#.to("cpu")
-        #      priv_s[j,:,433:563] = F.softmax(preds[:, :-1, 0:26], dim=-1).reshape(src.size(0), 5 * 26)
-
-        #gumbel_dist = torch.distributions.gumbel.Gumbel(torch.tensor([0.]), torch.tensor([1.]))
 
         assert(torch.all(0 == torch.sum(priv_s[:,:,0:125], -1)))
 
@@ -382,41 +295,7 @@ class R2D2Agent(torch.jit.ScriptModule):
                 if not torch.any(temp==26) and not torch.any(temp==27):
                     break
             targets[:,j+1] = temp.reshape(src.size(0))
-       #     priv_s[:, :, 0:125] = 1
-       #     priv_s[priv_s.size(0)-1, :, 25*j:25*(j+1)] = j_card_dist[:, 0:25]
             priv_s[:, :, 25*j:25*(j+1)] = j_card_dist[:, 0:25]
-
-        #  leftover = src.size(1)%4
-        #  for j in range(src.size(1)//4):
-        #      temp = torch.zeros(([4*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-        #      temp[:] = src[:, :, :].repeat([4, 1, 1])
-        #      temp[0:src.size(0), 4*j+1:, :] = 205
-        #      temp[src.size(0):2*src.size(0), 4*j+2:, :] = 205
-        #      temp[2*src.size(0):3*src.size(0), 4*j+3:, :] = 205
-        #      temp[3*src.size(0):4*src.size(0), 4*j+4:, :] = 205
-
-        #      targets = torch.cat((trg[:, 4*j, :-1], 
-        #                              trg[:, 4*j+1, :-1],
-        #                              trg[:, 4*j+2, :-1],
-        #                              trg[:, 4*j+3, :-1]), dim=0).detach()
-
-        #      preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-        #      priv_s[4*j,:,433:563] = preds[0:src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-        #      priv_s[4*j+1,:,433:563] = preds[src.size(0):2*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-        #      priv_s[4*j+2,:,433:563] = preds[2*src.size(0):3*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-        #      priv_s[4*j+3,:,433:563] = preds[3*src.size(0):4*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-        #  if leftover:
-        #      temp = torch.zeros(([leftover*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-        #      temp[:] = src[:, :, :].repeat([leftover, 1, 1])
-        #      for k in range(leftover):
-        #          temp[k*src.size(0):(k+1)*src.size(0), src.size(1)-(leftover-k-1):, :] = 205
-        #      targets = trg[:, src.size(1)-leftover, :-1].detach()
-        #      for k in range(1,leftover):
-        #          targets = torch.cat((targets, trg[:, src.size(1)-(leftover-k), :-1]), dim=0).detach()
-
-        #      preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-        #      for k in range(leftover):
-        #          priv_s[src.size(1)-(leftover-k),:,433:563] = preds[k*src.size(0):(k+1)*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
 
         priv_s = priv_s.flatten(0, 1)
         legal_move = obs["legal_move"].flatten(0, 1)
@@ -483,92 +362,11 @@ class R2D2Agent(torch.jit.ScriptModule):
 
         priv_s = input_["priv_s"].detach()
 
-        #priv_s[:,433:783] = 0
-
         nopeak_mask = torch.triu(torch.ones((1, 6, 6)), diagonal=1)
         nopeak_mask = (nopeak_mask == 0).to("cuda:1").detach()
 
-       # if self.belief_module.use:
-
-       #     # src is bs x seq_len x 2 x 15
-       #     # trg is bs x seq_len x 2 x 7
-       #     if self.vdn:
-       #         src, trg = self.belief_module.get_samples(input_["priv_s"], input_["own_hand"], torch.zeros(input_["priv_s"].size(1), dtype=torch.int) + input_["priv_s"].size(0), device="cuda:1")
-       #         
-       #         leftover = src.size(1)%4
-       #         for j in range(src.size(1)//4):
-       #             temp = torch.zeros(([2*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-       #             for i in range(2):
-       #                 if i == 0:
-       #                     temp[:] = src[:, :, i, :].repeat([2, 1, 1])
-       #                     temp[0:src.size(0), 4*j+1:, :] = 205
-       #                     temp[src.size(0):2*src.size(0), 4*j+3:, :] = 205
-       #                     targets = torch.cat((trg[:, 4*j, i, :-1], 
-       #                                         trg[:, 4*j+2, i, :-1]), dim=0).detach()
-       #                     preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-
-       #                     priv_s[4*j,:,i,433:563] = preds[0:src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-       #                     priv_s[4*j+2,:,i,433:563] = preds[src.size(0):2*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-
-       #                 else:
-       #                     temp[:] = src[:, :, i, :].repeat([2, 1, 1])
-       #                     temp[0:src.size(0), 4*j+2:, :] = 205
-       #                     temp[src.size(0):2*src.size(0), 4*j+4:, :] = 205
-       #                     targets = torch.cat((trg[:, 4*j+1, i, :-1],
-       #                                         trg[:, 4*j+3, i, :-1]), dim=0).detach()
-       #                     preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-
-       #                     priv_s[4*j+1,:,i,433:563] = preds[0:src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-       #                     priv_s[4*j+3,:,i,433:563] = preds[src.size(0):2*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-
-       #         if leftover:
-       #             for i in range(2):
-       #                 if i == 0:
-       #                     temp = torch.zeros(([(leftover+1)//2*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-       #                     temp[:] = src[:, :, i, :].repeat([(leftover+1)//2, 1, 1])
-       #                     for k in range((leftover+1)//2):
-       #                         temp[k*src.size(0):(k+1)*src.size(0), src.size(1)-leftover+2*k+1:, :] = 205
-       #                     targets = trg[:, src.size(1)-leftover, i, :-1].detach()
-       #                     for k in range(2, leftover, 2):
-       #                         targets = torch.cat((targets, trg[:, src.size(1)-leftover+k, i, :-1]), dim=0).detach()
-
-       #                     preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-       #                     count = 0
-       #                     for k in range(0, leftover, 2):
-       #                         priv_s[src.size(1)-leftover+k,:,i,433:563] = preds[count*src.size(0):(count+1)*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-       #                         count += 1
-       #                 
-       #                 if i == 1:
-       #                     if leftover >= 2:
-       #                         temp = torch.zeros(([(leftover)//2*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-       #                         temp[:] = src[:, :, i, :].repeat([(leftover)//2, 1, 1])
-       #                         for k in range((leftover)//2):
-       #                             temp[k*src.size(0):(k+1)*src.size(0), src.size(1)-leftover+2*k+2:, :] = 205
-       #                         targets = trg[:, src.size(1)-leftover+1, i, :-1].detach()
-       #                         for k in range(2,leftover,2):
-       #                             targets = torch.cat((targets, trg[:, src.size(1)-leftover+k, i, :-1]), dim=0).detach()
-
-       #                         preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-       #                         count = 0
-       #                         for k in range(1, leftover, 2):
-       #                             priv_s[src.size(1)-leftover+k,:,i,433:563] = preds[count*src.size(0):(count+1)*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-       #                             count += 1
-
-       #                 # temp[:] = src[:, :, i, :].repeat([leftover, 1, 1])
-       #                 # for k in range(leftover):
-       #                 #     temp[k*src.size(0):(k+1)*src.size(0), src.size(1)-(leftover-k-1):, :] = 205
-       #                 # targets = trg[:, src.size(1)-leftover, i, :-1].detach()
-       #                 # for k in range(1,leftover):
-       #                 #     targets = torch.cat((targets, trg[:, src.size(1)-(leftover-k), i, :-1]), dim=0).detach()
-
-       #                 # preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-       #                 # for k in range(leftover):
-       #                 #     priv_s[src.size(1)-(leftover-k),:,i,433:563] = preds[k*src.size(0):(k+1)*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-          
-            # src is bs x seq_len x 15
-            # trg is bs x seq_len x 7 
-       #     else:
-
+        # src is bs x seq_len x 15, where each of the 15 tokens describe a different observable environment feature
+        
         if input_["priv_s"].size(1) == 1:
             priv_s = priv_s.transpose(0, 1)
             bs = input_["priv_s"].size(0)
@@ -589,120 +387,16 @@ class R2D2Agent(torch.jit.ScriptModule):
                 if not torch.any(temp==26) and not torch.any(temp==27):
                     break
             targets[:,j+1] = temp.reshape(src.size(0))
-      #      priv_s[:, :, 0:125] = 1
-      #      priv_s[priv_s.size(0)-1, :, 25*j:25*(j+1)] = j_card_dist[:, 0:25]
             priv_s[:, :, 25*j:25*(j+1)] = j_card_dist[:, 0:25]
-
-       # leftover = src.size(1)%4
-       # for j in range(src.size(1)//4):
-       #     temp = torch.zeros(([4*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-       #     temp[:] = src[:, :, :].repeat([4, 1, 1])
-       #     temp[0:src.size(0), 4*j+1:, :] = 205
-       #     temp[src.size(0):2*src.size(0), 4*j+2:, :] = 205
-       #     temp[2*src.size(0):3*src.size(0), 4*j+3:, :] = 205
-       #     temp[3*src.size(0):4*src.size(0), 4*j+4:, :] = 205
-
-       #     targets = torch.cat((trg[:, 4*j, :-1],
-       #                             trg[:, 4*j+1, :-1],
-       #                             trg[:, 4*j+2, :-1],
-       #                             trg[:, 4*j+3, :-1]), dim=0).detach()
-
-       #     preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-       #     priv_s[4*j,:,433:563] = preds[0:src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-       #     priv_s[4*j+1,:,433:563] = preds[src.size(0):2*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-       #     priv_s[4*j+2,:,433:563] = preds[2*src.size(0):3*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-       #     priv_s[4*j+3,:,433:563] = preds[3*src.size(0):4*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-       # if leftover:
-       #     temp = torch.zeros(([leftover*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-       #     temp[:] = src[:, :, :].repeat([leftover, 1, 1])
-       #     for k in range(leftover):
-       #         temp[k*src.size(0):(k+1)*src.size(0), src.size(1)-(leftover-k-1):, :] = 205
-       #     targets = trg[:, src.size(1)-leftover, :-1].detach()
-       #     for k in range(1,leftover):
-       #         targets = torch.cat((targets, trg[:, src.size(1)-(leftover-k), :-1]), dim=0).detach()
-
-       #     preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-       #     for k in range(leftover):
-       #         priv_s[src.size(1)-(leftover-k),:,433:563] = preds[k*src.size(0):(k+1)*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-
 
         priv_s = priv_s.flatten(0, flatten_end)
         legal_move = input_["legal_move"].flatten(0, flatten_end)
         online_a = input_["a"].flatten(0, flatten_end)
 
         next_priv_s = input_["next_priv_s"].detach()
+        
+        # src is bs x seq_len x 15, where each of the 15 tokens describe a different observable environment feature
 
-        #next_priv_s[:,433:783] = 0
-
-       # if self.belief_module.use:
-
-       #     # src is bs x seq_len x 2 x 15
-       #     # trg is bs x seq_len x 2 x 7
-       #     if self.vdn:
-       #         src, trg = self.belief_module.get_samples(input_["next_priv_s"], input_["next_own_hand"], torch.zeros(input_["next_priv_s"].size(1), dtype=torch.int) + input_["next_priv_s"].size(0), device="cuda:1")
-
-       #         leftover = src.size(1)%4
-       #         for j in range(src.size(1)//4):
-       #             temp = torch.zeros(([2*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-       #             for i in range(2):
-       #                 if i == 0:
-       #                     temp[:] = src[:, :, i, :].repeat([2, 1, 1])
-       #                     temp[0:src.size(0), 4*j+1:, :] = 205
-       #                     temp[src.size(0):2*src.size(0), 4*j+3:, :] = 205
-       #                     targets = torch.cat((trg[:, 4*j, i, :-1], 
-       #                                         trg[:, 4*j+2, i, :-1]), dim=0).detach()
-       #                     preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-
-       #                     next_priv_s[4*j,:,i,433:563] = preds[0:src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-       #                     next_priv_s[4*j+2,:,i,433:563] = preds[src.size(0):2*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-
-       #                 else:
-       #                     temp[:] = src[:, :, i, :].repeat([2, 1, 1])
-       #                     temp[0:src.size(0), 4*j+2:, :] = 205
-       #                     temp[src.size(0):2*src.size(0), 4*j+4:, :] = 205
-       #                     targets = torch.cat((trg[:, 4*j+1, i, :-1],
-       #                                         trg[:, 4*j+3, i, :-1]), dim=0).detach()
-       #                     preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-
-       #                     next_priv_s[4*j+1,:,i,433:563] = preds[0:src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-       #                     next_priv_s[4*j+3,:,i,433:563] = preds[src.size(0):2*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-
-       #         if leftover:
-       #             for i in range(2):
-       #                 if i == 0:
-       #                     temp = torch.zeros(([(leftover+1)//2*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-       #                     temp[:] = src[:, :, i, :].repeat([(leftover+1)//2, 1, 1])
-       #                     for k in range((leftover+1)//2):
-       #                         temp[k*src.size(0):(k+1)*src.size(0), src.size(1)-leftover+2*k+1:, :] = 205
-       #                     targets = trg[:, src.size(1)-leftover, i, :-1].detach()
-       #                     for k in range(2, leftover, 2):
-       #                         targets = torch.cat((targets, trg[:, src.size(1)-leftover+k, i, :-1]), dim=0).detach()
-
-       #                     preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-       #                     count = 0
-       #                     for k in range(0, leftover, 2):
-       #                         next_priv_s[src.size(1)-leftover+k,:,i,433:563] = preds[count*src.size(0):(count+1)*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-       #                         count += 1
-       #                 
-       #                 if i == 1:
-       #                     if leftover >= 2:
-       #                         temp = torch.zeros(([(leftover)//2*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-       #                         temp[:] = src[:, :, i, :].repeat([(leftover)//2, 1, 1])
-       #                         for k in range((leftover)//2):
-       #                             temp[k*src.size(0):(k+1)*src.size(0), src.size(1)-leftover+2*k+2:, :] = 205
-       #                         targets = trg[:, src.size(1)-leftover+1, i, :-1].detach()
-       #                         for k in range(2,leftover,2):
-       #                             targets = torch.cat((targets, trg[:, src.size(1)-leftover+k, i, :-1]), dim=0).detach()
-
-       #                         preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-       #                         count = 0
-       #                         for k in range(1, leftover, 2):
-       #                             next_priv_s[src.size(1)-leftover+k,:,i,433:563] = preds[count*src.size(0):(count+1)*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-       #                             count += 1
-
-            # src is bs x seq_len x 15
-            # trg is bs x seq_len x 7 
-           # else:
         if input_["next_priv_s"].size(1) == 1:
             next_priv_s = next_priv_s.transpose(0, 1)
             bs = input_["next_priv_s"].size(0)
@@ -723,41 +417,7 @@ class R2D2Agent(torch.jit.ScriptModule):
                 if not torch.any(temp==26) and not torch.any(temp==27):
                     break
             targets[:,j+1] = temp.reshape(src.size(0))
-      #      next_priv_s[next_priv_s.size(0)-1, :, 0:125] = 1
-      #      next_priv_s[next_priv_s.size(0)-1, :, 25*j:25*(j+1)] = j_card_dist[:, 0:25]
             next_priv_s[:, :, 25*j:25*(j+1)] = j_card_dist[:, 0:25]
-      
-        #leftover = src.size(1)%4
-        #for j in range(src.size(1)//4):
-        #    temp = torch.zeros(([4*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-        #    temp[:] = src[:, :, :].repeat([4, 1, 1])
-        #    temp[0:src.size(0), 4*j+1:, :] = 205
-        #    temp[src.size(0):2*src.size(0), 4*j+2:, :] = 205
-        #    temp[2*src.size(0):3*src.size(0), 4*j+3:, :] = 205
-        #    temp[3*src.size(0):4*src.size(0), 4*j+4:, :] = 205
-
-        #    targets = torch.cat((trg[:, 4*j, :-1],
-        #                            trg[:, 4*j+1, :-1],
-        #                            trg[:, 4*j+2, :-1],
-        #                            trg[:, 4*j+3, :-1]), dim=0).detach()
-
-        #    preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-        #    next_priv_s[4*j,:,433:563] = preds[0:src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-        #    next_priv_s[4*j+1,:,433:563] = preds[src.size(0):2*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-        #    next_priv_s[4*j+2,:,433:563] = preds[2*src.size(0):3*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-        #    next_priv_s[4*j+3,:,433:563] = preds[3*src.size(0):4*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
-        #if leftover:
-        #    temp = torch.zeros(([leftover*src.size(0), src.size(1), 15]), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 15
-        #    temp[:] = src[:, :, :].repeat([leftover, 1, 1])
-        #    for k in range(leftover):
-        #        temp[k*src.size(0):(k+1)*src.size(0), src.size(1)-(leftover-k-1):, :] = 205
-        #    targets = trg[:, src.size(1)-leftover, :-1].detach()
-        #    for k in range(1,leftover):
-        #        targets = torch.cat((targets, trg[:, src.size(1)-(leftover-k), :-1]), dim=0).detach()
-
-        #    preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-        #    for k in range(leftover):
-        #        next_priv_s[src.size(1)-(leftover-k),:,433:563] = preds[k*src.size(0):(k+1)*src.size(0), :-1, 0:26].reshape(-1, 5 * 26)
 
         next_priv_s = next_priv_s.flatten(0, flatten_end)
         next_legal_move = input_["next_legal_move"].flatten(0, flatten_end)
@@ -822,72 +482,14 @@ class R2D2Agent(torch.jit.ScriptModule):
 
             nopeak_mask = torch.triu(torch.ones((1, 6, 6)), diagonal=1)
             nopeak_mask = (nopeak_mask == 0).to("cuda:0").detach()
-                # src is bs x seq_len x 2 x 15
-                # trg is bs x seq_len x 2 x 7        
-           #     if self.vdn:
-           #         src, trg = self.belief_module.get_samples(
-           #                             obs["priv_s"].detach(), 
-           #                             obs["own_hand"].detach(), 
-           #                             seq_len.to(torch.int).detach(), 
-           #                             device="cuda:0")
-                # src is bs x seq_len x 15
-                # trg is bs x seq_len x 7
-           #     else:
+
             src, _ = self.belief_module.get_samples_one_player(obs["priv_s"].detach(),
                                                                     obs["own_hand"].detach(),
                                                                     seq_len.detach(),
                                                                     device="cuda:0")
             src = src.detach()
-            #    trg = trg.detach()
 
             priv_s = obs["priv_s"].detach()
-            #if self.vdn:
-            #    priv_s[:,:,:,433:783] = 0
-            #else:
-            #    priv_s[:,:,433:783] = 0
-
-            #if self.belief_module.use:
-            #    if self.vdn:
-            #        for j in range(src.size(1)//4):
-            #            games_considered1 = torch.nonzero(seq_len > 4*j, as_tuple=True)[0].detach()
-            #            games_considered2 = torch.nonzero(seq_len > 4*j+1, as_tuple=True)[0].detach()
-            #            games_considered3 = torch.nonzero(seq_len > 4*j+2, as_tuple=True)[0].detach()
-            #            games_considered4 = torch.nonzero(seq_len > 4*j+3, as_tuple=True)[0].detach()
-            #            if games_considered1.numel() + games_considered2.numel() + games_considered3.numel() + games_considered4.numel() == 0: #empty
-            #                break
-
-            #            for i in range(2):
-            #                if i == 0:
-            #                    if games_considered1.numel() + games_considered3.numel():
-            #                        temp = torch.zeros(([games_considered1.numel()+games_considered3.numel(), src.size(1), 15]), dtype=torch.long, device="cuda:0").detach() # bs x seq_len x 15
-            #                        temp[0:games_considered1.numel()] = src[games_considered1, :, i, :]
-            #                        temp[games_considered1.numel():games_considered1.numel()+games_considered3.numel()] = src[games_considered3, :, i, :]
-            #                        temp[0:games_considered1.numel(), 4*j+1:, :] = 205
-            #                        temp[games_considered1.numel():games_considered1.numel()+games_considered3.numel(), 4*j+3:, :] = 205
-
-            #                        targets = torch.cat((trg[games_considered1, 4*j, i, :-1], 
-            #                                            trg[games_considered3, 4*j+2, i, :-1]), dim=0).detach()
-
-            #                        preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-
-            #                        priv_s[4*j,games_considered1,i,433:563] = preds[0:games_considered1.numel(), :-1, 0:26].reshape(games_considered1.numel(), 5 * 26)
-            #                        priv_s[4*j+2,games_considered3,i,433:563] = preds[games_considered1.numel():games_considered1.numel()+games_considered3.numel(), :-1, 0:26].reshape(games_considered3.numel(), 5 * 26)
-            #                    
-            #                else:
-            #                    if games_considered2.numel() + games_considered4.numel():
-            #                        temp = torch.zeros(([games_considered2.numel()+games_considered4.numel(), src.size(1), 15]), dtype=torch.long, device="cuda:0").detach() # bs x seq_len x 15
-            #                        temp[0:games_considered2.numel()] = src[games_considered2, :, i, :]
-            #                        temp[games_considered2.numel():games_considered2.numel()+games_considered4.numel()] = src[games_considered4, :, i, :]
-            #                        temp[0:games_considered2.numel(), 4*j+2:, :] = 205
-            #                        temp[games_considered2.numel():games_considered2.numel()+games_considered4.numel(), 4*j+4:, :] = 205
-            #        
-            #                        targets = torch.cat((trg[games_considered2, 4*j+1, i, :-1],
-            #                                                trg[games_considered4, 4*j+3, i, :-1]), dim=0).detach()
-
-            #                        preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-            #                
-            #                        priv_s[4*j+1,games_considered2,i,433:563] = preds[0:games_considered2.numel(), :-1, 0:26].reshape(games_considered2.numel(), 5 * 26)
-            #                        priv_s[4*j+3,games_considered4,i,433:563] = preds[games_considered2.numel():games_considered2.numel()+games_considered4.numel(), :-1, 0:26].reshape(games_considered4.numel(), 5 * 26)
             
             targets = 26 + torch.zeros((src.size(0), 6), dtype=torch.long, device="cuda:0").detach() # bs x seq_len x 6
             j_card_dist = torch.zeros((src.size(0), 28), dtype=torch.long, device="cuda:0").detach()
@@ -902,49 +504,8 @@ class R2D2Agent(torch.jit.ScriptModule):
                     if not torch.any(temp==26) and not torch.any(temp==27):
                         break
                 targets[:,j+1] = temp.reshape(src.size(0))
-         #       priv_s[:, :, 0:125] = 1
                 for i in range(src.size(0)):
                     priv_s[0:seq_len[j], j, 25*j:25*(j+1)] = j_card_dist[j, 0:25]
-         #       priv_s[:, :, 25*j:25*(j+1)] = j_card_dist[:, 0:25]
-            
-            #        for j in range(src.size(1)//4):
-            #            games_considered1 = torch.nonzero(seq_len > 4*j, as_tuple=True)[0].detach()
-            #            games_considered2 = torch.nonzero(seq_len > 4*j+1, as_tuple=True)[0].detach()
-            #            games_considered3 = torch.nonzero(seq_len > 4*j+2, as_tuple=True)[0].detach()
-            #            games_considered4 = torch.nonzero(seq_len > 4*j+3, as_tuple=True)[0].detach()
-            #            if games_considered1.numel() + games_considered2.numel() + games_considered3.numel() + games_considered4.numel() == 0: #empty
-            #                break
-            #            temp = 205 + torch.zeros(([games_considered1.numel()+games_considered2.numel()+games_considered3.numel()+games_considered4.numel(), src.size(1), 15]), dtype=torch.long, device="cuda:0").detach() # bs x seq_len x 15
-            #            temp[0:games_considered1.numel()] = src[games_considered1, :, :]
-            #            temp[games_considered1.numel():games_considered1.numel()+games_considered2.numel()] = src[games_considered2, :, :]
-            #            temp[games_considered1.numel()+games_considered2.numel():games_considered1.numel()+games_considered2.numel()+games_considered3.numel()] = src[games_considered3, :, :]
-            #            temp[games_considered1.numel()+games_considered2.numel()+games_considered3.numel():games_considered1.numel()+games_considered2.numel()+games_considered3.numel()+games_considered4.numel()] = src[games_considered4, :, :]
-
-            #          #  temp[0:games_considered1.numel(), 4*j+1:, :] = 205
-            #          #  temp[games_considered1.numel():games_considered1.numel()+games_considered2.numel(), 4*j+2:, :] = 205
-            #          #  temp[games_considered1.numel()+games_considered2.numel():games_considered1.numel()+games_considered2.numel()+games_considered3.numel(), 4*j+3:, :] = 205
-            #          #  temp[games_considered1.numel()+games_considered2.numel()+games_considered3.numel():games_considered1.numel()+games_considered2.numel()+games_considered3.numel()+games_considered4.numel(), 4*j+4:, :] = 205
-
-            #            targets = torch.cat((trg[games_considered1, 4*j, :-1],
-            #                                 trg[games_considered2, 4*j+1, :-1],
-            #                                 trg[games_considered3, 4*j+2, :-1],
-            #                                 trg[games_considered4, 4*j+3, :-1]), dim=0).detach()
-
-            #            preds = F.softmax(self.belief_module(temp, targets.long(), None, nopeak_mask), dim=-1).detach()
-
-            #            priv_s[4*j,games_considered1,433:563] = preds[0:games_considered1.numel(), :-1, 0:26].reshape(games_considered1.numel(), 5 * 26)
-            #            priv_s[4*j+1,games_considered2,433:563] = preds[games_considered1.numel():games_considered1.numel()+games_considered2.numel(), :-1, 0:26].reshape(games_considered2.numel(), 5 * 26)
-
-            #            priv_s[4*j+2,games_considered3,433:563] = preds[games_considered1.numel()+games_considered2.numel():games_considered1.numel()+games_considered2.numel()+games_considered3.numel(), :-1, 0:26].reshape(games_considered3.numel(), 5 * 26)
-
-            #            priv_s[4*j+3,games_considered4,433:563] = preds[games_considered1.numel()+games_considered2.numel()+games_considered3.numel():games_considered1.numel()+games_considered2.numel()+games_considered3.numel()+games_considered4.numel(), :-1, 0:26].reshape(games_considered4.numel(), 5 * 26)
-
-             #   del temp
-             #   del targets
-             #   del j_card_dist
-             #   del src
-             #   del targets
-             #   del nopeak_mask
 
             bsize, num_player = 0, 1
             if self.vdn:
