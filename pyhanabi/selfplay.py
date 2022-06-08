@@ -98,7 +98,7 @@ if __name__ == "__main__":
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
 
-    logger_path = os.path.join(args.save_dir, "model_w_belief_module_brop_odds.log")
+    logger_path = os.path.join(args.save_dir, "model_w_belief_module_br.log")
     sys.stdout = common_utils.Logger(logger_path)
     saver = common_utils.TopkSaver(args.save_dir, 5)
 
@@ -280,24 +280,6 @@ if __name__ == "__main__":
             num_update = batch_idx + epoch * args.epoch_len
             if (batch_idx + 1) % 250 == 0:
                 print(str((batch_idx+1)//10) + " percent done epoch")
-#            if num_update > 0 and num_update % args.num_update_between_reflection == 0:
-#                    context.pause()
-#
-#                    torch.save(agent.target_net.state_dict(), "current_target.pthw")
-#                    # torch.save(agent.belief_module.state_dict(), "current_belief.pth")
-#                    torch.save(torch.tensor([1]), "reflection_phase.pt")
-#
-#                    print("Reflection phase...")
-#                    start_time = time.time()
-#                    while torch.load("reflection_phase.pt").item() == 1:
-#                        time.sleep(10)
-#                        if ((time.time()-start_time)//60 > 0 and (time.time()-start_time)//60 % 5 == 0 and (time.time()-start_time)%60 < 15):
-#                            print("Waiting for research phase...")
-#
-#                    agent.belief_module.load_state_dict(torch.load("current_belief.pth"))
-#                    agent.belief_module.use = True
-#                    print("Recommence research phase.")
-#                    context.resume()
             
             if num_update % args.num_update_between_sync == 0:
                 agent.sync_target_with_online()
@@ -322,9 +304,6 @@ if __name__ == "__main__":
             loss = (loss * weight).mean()
             loss.backward()
 
-            # belief_loss = sum(belief_losses)
-            # belief_loss.backward()
-
             torch.cuda.synchronize()
             stopwatch.time("forward & backward")
 
@@ -334,9 +313,6 @@ if __name__ == "__main__":
             optim.step()
             optim.zero_grad()
 
-            # optim_belief.step()
-            # optim_belief.zero_grad()
-
             torch.cuda.synchronize()
             stopwatch.time("update model")
 
@@ -345,13 +321,7 @@ if __name__ == "__main__":
 
             stat["loss"].feed(loss.detach().item())
             stat["grad_norm"].feed(g_norm)
-            # stat["belief_loss_card1"].feed(belief_losses[0].detach().item())
-            # stat["belief_loss_card2"].feed(belief_losses[1].detach().item())
-            # stat["belief_loss_card3"].feed(belief_losses[2].detach().item())
-            # stat["belief_loss_card4"].feed(belief_losses[3].detach().item())
-            # stat["belief_loss_card5"].feed(belief_losses[4].detach().item())
-
-            # del belief_losses
+            
             del loss
             del batch
             del weight
@@ -369,8 +339,6 @@ if __name__ == "__main__":
         if epoch % 5 == 0:
             context.pause()
             eval_seed = (9917 + epoch * 999999) % 7777777
-    #        for runner in eval_runners:
-    #            runner.update_model(agent)
             eval_runners1[0].update_model(agent)
             eval_runners2[0].update_model(agent)
             eval_runners3[0].update_model(agent)
@@ -452,16 +420,12 @@ if __name__ == "__main__":
             )
 
             if epoch > 0 and epoch % 50 == 0:
-                force_save_name = "model_w_belief_module_brop_odds_epoch%d" % epoch
+                force_save_name = "model_w_belief_module_br_epoch%d" % epoch
             else:
                 force_save_name = None
             model_saved = saver.save(
                 None, agent.online_net.state_dict(), (score1+score2+score3+score4+score5+score6)*1.0/6, force_save_name=force_save_name
             )
-      #      if model_saved:
-      #          if force_save_name is not None:
-      #              torch.save(agent.belief_module.state_dict(),"exps/exp1/belief_"+force_save_name+".pth")
-      #          torch.save(agent.belief_module.state_dict(),"exps/exp1/belief_"+str(saver.worse_perf_idx)+".pth")
             print(
                 "epoch %d, eval score1: %.4f, perfect1: %.2f, model saved: %s"
                 % (epoch, score1, perfect1 * 100, model_saved)
