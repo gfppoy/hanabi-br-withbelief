@@ -505,7 +505,7 @@ class R2D2Agent(torch.jit.ScriptModule):
                         break
                 targets[:,j+1] = temp.reshape(src.size(0))
                 for i in range(src.size(0)):
-                    priv_s[0:seq_len[j], j, 25*j:25*(j+1)] = j_card_dist[j, 0:25]
+                    priv_s[0:seq_len[i], i, 25*j:25*(j+1)] = j_card_dist[i, 0:25]
 
             bsize, num_player = 0, 1
             if self.vdn:
