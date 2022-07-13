@@ -50,8 +50,8 @@ class HanabiThreadLoop : public rela::ThreadLoop {
       obs = vecEnv_->reset(obs);
       for (int i = 0; i < (int)reset_envs.size(); ++i) {
          counts[reset_envs[i]] = 1;
-         aoh1.index({Slice(), i, Slice()}) = torch::zeros({80, 838});
-         aoh2.index({Slice(), i, Slice()}) = torch::zeros({80, 838});
+         aoh1.index({Slice(), reset_envs[i], Slice()}) = 0;
+         aoh2.index({Slice(), reset_envs[i], Slice()}) = 0;
        }
       while (!vecEnv_->anyTerminated()) {
         if (terminated()) {
