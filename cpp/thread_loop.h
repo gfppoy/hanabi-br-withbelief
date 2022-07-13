@@ -71,10 +71,14 @@ class HanabiThreadLoop : public rela::ThreadLoop {
             auto input = rela::tensor_dict::narrow(obs, 1, i, 1, true);
             for (int j = 0; j < (int)vecEnv_->size(); ++j) {
               if (i == 0) {
-                aoh1.index({counts[j].item<int>()-1, j, Slice()}) = input["priv_s"].index({j, Slice()});
+                if (counts[j].item<int>()-1 < 80) {
+                  aoh1.index({counts[j].item<int>()-1, j, Slice()}) = input["priv_s"].index({j, Slice()});
+                }
               }
               else {
-                aoh2.index({counts[j].item<int>()-1, j, Slice()}) = input["priv_s"].index({j, Slice()});
+                if (counts[j].item<int>()-1 < 80) {
+                  aoh2.index({counts[j].item<int>()-1, j, Slice()}) = input["priv_s"].index({j, Slice()});
+                }
               }
             }
             if (i == 0) {
