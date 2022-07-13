@@ -43,8 +43,16 @@ class HanabiThreadLoop : public rela::ThreadLoop {
     rela::TensorDict obs = {};
     torch::Tensor r;
     torch::Tensor t;
+    torch::Tensor aoh1 = torch::ones({80, (int)vecEnv_->size(), 838});
+    torch::Tensor aoh2 = torch::ones({80, (int)vecEnv_->size(), 838});
+    torch::Tensor counts = torch::zeros({(int)vecEnv_->size()});
     while (!terminated()) {
       obs = vecEnv_->reset(obs);
+      for (int i = 0; i < (int)reset_envs.size(); ++i) {
+         counts[reset_envs[i]] = 1;
+         aoh1.index({Slice(), i, Slice()}) = torch::zeros({80, 838});
+         aoh2.index({Slice(), i, Slice()}) = torch::zeros({80, 838});
+       }
       while (!vecEnv_->anyTerminated()) {
         if (terminated()) {
           break;
@@ -61,11 +69,29 @@ class HanabiThreadLoop : public rela::ThreadLoop {
           std::vector<rela::TensorDict> replyVec;
           for (int i = 0; i < (int)actors_.size(); ++i) {
             auto input = rela::tensor_dict::narrow(obs, 1, i, 1, true);
+            for (int j = 0; j < (int)vecEnv_->size(); ++j) {
+              if (i == 0) {
+                aoh1.index({counts[j].item<int>()-1, j, Slice()}) = input["priv_s"].index({j, Slice()});
+              }
+              else {
+                aoh2.index({counts[j].item<int>()-1, j, Slice()}) = input["priv_s"].index({j, Slice()});
+              }
+            }
+            if (i == 0) {
+              input["aoh"] = aoh1;
+            }
+            else {
+              input["aoh"] = aoh2;
+            }
+            input["seq_len"] = counts;
             // if (!logFile_.empty()) {
             //   logState(*file, input);
             // }
             auto rep = actors_[i]->act(input);
             replyVec.push_back(rep);
+          }
+          for (int i = 0; i < (int)vecEnv_->size(); ++i) {
+            counts[i] += 1;
           }
           reply = rela::tensor_dict::stack(replyVec, 1);
         }
