@@ -275,7 +275,7 @@ class R2D2Agent(torch.jit.ScriptModule):
         
         # src is bs x seq_len x 15, where each of the 15 tokens describe a different observable environment feature
         
-        src, _ = self.belief_module.get_samples_one_player(obs["aoh"].transpose(0,1).reshape(80,-1,838), obs["own_hand"].reshape(-1 125), obs["seq_len"].flatten().long(), device=self.device)
+        src = self.belief_module.get_samples_one_player(obs["aoh"].transpose(0,1).reshape(80,-1,838), obs["own_hand"].reshape(-1 125), obs["seq_len"].flatten().long(), device=self.device)
         priv_s = priv_s.flatten(0, 1)
 
         assert(torch.all(0 == torch.sum(priv_s[:,:,0:125], -1)))
@@ -374,7 +374,7 @@ class R2D2Agent(torch.jit.ScriptModule):
             nopeak_mask = torch.triu(torch.ones((1, 6, 6)), diagonal=1)
             nopeak_mask = (nopeak_mask == 0).to("cuda:0").detach()
 
-            src, _ = self.belief_module.get_samples_one_player(obs["priv_s"].detach(),
+            src = self.belief_module.get_samples_one_player(obs["priv_s"].detach(),
                                                                     obs["own_hand"].detach(),
                                                                     seq_len.detach(),
                                                                     device="cuda:0")
