@@ -389,22 +389,22 @@ class Transformer(nn.Module):
         if (torch.all(seq_len < obs.size(0))):
             assert(torch.any(torch.round(torch.sum(obs[seq_len, torch.arange(start=0,end=batch_size,dtype=torch.long), :], -1)) == 0))
 
-        target_shape = list(own_hand.shape[:-1]) + [5, 25]
+        #target_shape = list(own_hand.shape[:-1]) + [5, 25]
 
-        target = own_hand.view(target_shape)  # have to add empty card dimension to target!
-        target_empty_mask = (target.sum(-1, keepdim=True) == 0.0)
-        target = torch.cat([target, target_empty_mask.float()], -1)
+        #target = own_hand.view(target_shape)  # have to add empty card dimension to target!
+        #target_empty_mask = (target.sum(-1, keepdim=True) == 0.0)
+        #target = torch.cat([target, target_empty_mask.float()], -1)
         # for j in range(len(batch.seq_len)):
         #     target[batch.seq_len[j].long().item():, j, 0, :] *= 0
         #     target[batch.seq_len[j].long().item():, j, 1, :] *= 0
         # target = target.view(80, 2*batchsize, 5, -1)
 
-        trgs = torch.zeros((own_hand.size(0), batch_size, 7))
+        #trgs = torch.zeros((own_hand.size(0), batch_size, 7))
 
         # 0-27 is active agent's cards (25 is empty card, 26 is start of seq token, 27 is end of seq token)
-        trgs[:,:,0] = 26
-        trgs[:,:,6] = 27
-        trgs[:,:,1:6] = target.argmax(dim=-1).reshape(target_shape[:-1])
+        #trgs[:,:,0] = 26
+        #trgs[:,:,6] = 27
+        #trgs[:,:,1:6] = target.argmax(dim=-1).reshape(target_shape[:-1])
         # for ex in range(batch_size):
         #     for card in range(1,6):
         #         if 1 in target[gamesteps[ex], ex, card-1, :]:
@@ -506,7 +506,7 @@ class Transformer(nn.Module):
                                 info_tokens, life_tokens, move_type, move_affect] , dim=-1)
 
         stacked = stacked.transpose(0, 1)
-        trgs = trgs.transpose(0, 1)
+        #trgs = trgs.transpose(0, 1)
 
         # ck_tokens = ck_tokens.transpose(0,1).reshape(batch_size, -1)
 
@@ -520,7 +520,7 @@ class Transformer(nn.Module):
             # interleaved[j, (gamesteps[j]+1)*15+25:(gamesteps[j]+1)*15+30] = 5605
             # ck_tokens[j, (gamesteps[j]+1)*25:] = 5606
 
-        return stacked.detach(), trgs.to(device).detach() # dims are bs x seq_len x 15, bs x seq_len x 7
+        return stacked.detach()#, trgs.to(device).detach() # dims are bs x seq_len x 15, bs x seq_len x 7
 
     def forward(self, 
     src : torch.Tensor, 
