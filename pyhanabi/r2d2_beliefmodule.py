@@ -275,13 +275,8 @@ class R2D2Agent(torch.jit.ScriptModule):
         
         # src is bs x seq_len x 15, where each of the 15 tokens describe a different observable environment feature
         
-        if obs["priv_s"].size(1) == 1:
-            priv_s = priv_s.transpose(0, 1)
-            bs = obs["priv_s"].size(0)
-            seq_len = obs["priv_s"].size(1)
-            src, _  = self.belief_module.get_samples_one_player(torch.cat([obs["priv_s"].transpose(0,1), torch.zeros((79, bs, 838), device=self.device)]), obs["own_hand"].transpose(0,1), torch.zeros((bs), dtype=torch.long, device=self.device) + seq_len, device=self.device)
-        else:
-            src, _ = self.belief_module.get_samples_one_player(torch.cat([obs["priv_s"], torch.zeros((80-obs["priv_s"].size(0), obs["priv_s"].size(1), 838), device=self.device)]), obs["own_hand"], torch.zeros((obs["priv_s"].size(1)), dtype=torch.long, device=self.device) + obs["priv_s"].size(0), device=self.device)
+        src, _ = self.belief_module.get_samples_one_player(obs["aoh"].transpose(0,1).reshape(80,-1,838), obs["own_hand"].reshape(-1 25), obs["seq_len"].flatten().long(), device=self.device)
+        priv_s = priv_s.flatten(0, 1)
 
         assert(torch.all(0 == torch.sum(priv_s[:,:,0:125], -1)))
 
@@ -295,9 +290,8 @@ class R2D2Agent(torch.jit.ScriptModule):
                 if not torch.any(temp==26) and not torch.any(temp==27):
                     break
             targets[:,j+1] = temp.reshape(src.size(0))
-            priv_s[:, :, 25*j:25*(j+1)] = j_card_dist[:, 0:25]
+            priv_s[:, 25*j:25*(j+1)] = j_card_dist[:, 0:25]
 
-        priv_s = priv_s.flatten(0, 1)
         legal_move = obs["legal_move"].flatten(0, 1)
         eps = obs["eps"].flatten(0, 1)
 
@@ -347,111 +341,8 @@ class R2D2Agent(torch.jit.ScriptModule):
         """
         compute priority for one batch
         """
-        if self.uniform_priority:
-            return {"priority": torch.ones_like(input_["reward"]).detach().cpu()}
-
-        obsize, ibsize, num_player = 0, 0, 0
-        flatten_end = 0
-        if self.vdn:
-            obsize, ibsize, num_player = input_["priv_s"].size()[:3]
-            flatten_end = 2
-        else:
-            obsize, ibsize = input_["priv_s"].size()[:2]
-            num_player = 1
-            flatten_end = 1
-
-        priv_s = input_["priv_s"].detach()
-
-        nopeak_mask = torch.triu(torch.ones((1, 6, 6)), diagonal=1)
-        nopeak_mask = (nopeak_mask == 0).to("cuda:1").detach()
-
-        # src is bs x seq_len x 15, where each of the 15 tokens describe a different observable environment feature
-        
-        if input_["priv_s"].size(1) == 1:
-            priv_s = priv_s.transpose(0, 1)
-            bs = input_["priv_s"].size(0)
-            seq_len = input_["priv_s"].size(1)
-            src, _  = self.belief_module.get_samples_one_player(torch.cat([input_["priv_s"].transpose(0,1), torch.zeros((79, bs, 838), device="cuda:1" )]), input_["own_hand"].transpose(0,1), torch.zeros((bs), dtype=torch.long, device="cuda:1") + seq_len, device="cuda:1")
-        else:
-            src, _ = self.belief_module.get_samples_one_player(torch.cat([input_["priv_s"], torch.zeros((80-input_["priv_s"].size(0), input_["priv_s"].size(1), 838), device="cuda:1" )]), input_["own_hand"], torch.zeros((input_["priv_s"].size(1)), dtype=torch.long, device="cuda:1") + input_["priv_s"].size(0), device="cuda:1")
-
-        assert(torch.all(0 == torch.sum(priv_s[:,:,0:125], -1)))
-
-        targets = 26 + torch.zeros((src.size(0), 6), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 6
-        j_card_dist = torch.zeros((src.size(0), 28), dtype=torch.long, device="cuda:1").detach()
-        temp = torch.zeros((src.size(0)), dtype=torch.long, device="cuda:1").detach()
-        for j in range(5):
-            while True:
-                j_card_dist = F.softmax(self.belief_module(src, targets, None, nopeak_mask)[:,j,:], dim=-1).detach()
-                temp = torch.multinomial(j_card_dist, 1)#torch.argmax(torch.log(j_card_dist) + gumbel_dist.sample(sample_shape=j_card_dist.shape).squeeze(-1), axis=1)
-                if not torch.any(temp==26) and not torch.any(temp==27):
-                    break
-            targets[:,j+1] = temp.reshape(src.size(0))
-            priv_s[:, :, 25*j:25*(j+1)] = j_card_dist[:, 0:25]
-
-        priv_s = priv_s.flatten(0, flatten_end)
-        legal_move = input_["legal_move"].flatten(0, flatten_end)
-        online_a = input_["a"].flatten(0, flatten_end)
-
-        next_priv_s = input_["next_priv_s"].detach()
-        
-        # src is bs x seq_len x 15, where each of the 15 tokens describe a different observable environment feature
-
-        if input_["next_priv_s"].size(1) == 1:
-            next_priv_s = next_priv_s.transpose(0, 1)
-            bs = input_["next_priv_s"].size(0)
-            seq_len = input_["next_priv_s"].size(1)
-            src, _  = self.belief_module.get_samples_one_player(torch.cat([input_["next_priv_s"].transpose(0,1), torch.zeros((79, bs, 838), device="cuda:1" )]), input_["next_own_hand"].transpose(0,1), torch.zeros((bs), dtype=torch.long, device="cuda:1") + seq_len, device="cuda:1")
-        else:
-            src, _ = self.belief_module.get_samples_one_player(torch.cat([input_["next_priv_s"], torch.zeros((80-input_["next_priv_s"].size(0), input_["next_priv_s"].size(1), 838), device="cuda:1" )]), input_["next_own_hand"], torch.zeros((input_["next_priv_s"].size(1)), dtype=torch.long, device="cuda:1") + input_["next_priv_s"].size(0), device="cuda:1")
-       
-        assert(torch.all(0 == torch.sum(next_priv_s[:,:,0:125], -1)))
-
-        targets = 26 + torch.zeros((src.size(0), 6), dtype=torch.long, device="cuda:1").detach() # bs x seq_len x 6
-        j_card_dist = torch.zeros((src.size(0), 28), dtype=torch.long, device="cuda:1").detach()
-        temp = torch.zeros((src.size(0)), dtype=torch.long, device="cuda:1").detach()
-        for j in range(5):
-            while True:
-                j_card_dist = F.softmax(self.belief_module(src, targets, None, nopeak_mask)[:,j,:], dim=-1).detach()
-                temp = torch.multinomial(j_card_dist, 1)#torch.argmax(torch.log(j_card_dist) + gumbel_dist.sample(sample_shape=j_card_dist.shape).squeeze(-1), axis=1)
-                if not torch.any(temp==26) and not torch.any(temp==27):
-                    break
-            targets[:,j+1] = temp.reshape(src.size(0))
-            next_priv_s[:, :, 25*j:25*(j+1)] = j_card_dist[:, 0:25]
-
-        next_priv_s = next_priv_s.flatten(0, flatten_end)
-        next_legal_move = input_["next_legal_move"].flatten(0, flatten_end)
-        temperature = input_["temperature"].flatten(0, flatten_end)
-
-        hid = {
-            "h0": input_["h0"].flatten(0, 1).transpose(0, 1).contiguous(),
-            "c0": input_["c0"].flatten(0, 1).transpose(0, 1).contiguous(),
-        }
-        next_hid = {
-            "h0": input_["next_h0"].flatten(0, 1).transpose(0, 1).contiguous(),
-            "c0": input_["next_c0"].flatten(0, 1).transpose(0, 1).contiguous(),
-        }
-        reward = input_["reward"].flatten(0, 1)
-        bootstrap = input_["bootstrap"].flatten(0, 1)
-
-        online_qa = self.online_net(priv_s, legal_move, online_a, hid)[0]
-        next_a, _ = self.greedy_act(next_priv_s, next_legal_move, next_hid)
-        target_qa, _, _, _ = self.target_net(
-            next_priv_s, next_legal_move, next_a, next_hid,
-        )
-
-        bsize = obsize * ibsize
-        if self.vdn:
-            # sum over action & player
-            online_qa = online_qa.view(bsize, num_player).sum(1)
-            target_qa = target_qa.view(bsize, num_player).sum(1)
-
-        assert reward.size() == bootstrap.size()
-        assert reward.size() == target_qa.size()
-        target = reward + bootstrap * (self.gamma ** self.multi_step) * target_qa
-        priority = (target - online_qa).abs()
-        priority = priority.view(obsize, ibsize).detach().cpu()
-        return {"priority": priority}
+        # uniform priority:
+        return {"priority": torch.ones((input_["priv_s"].size(0), input_["priv_s"].size(1)))}
 
     ############# python only functions #############
     def flat_4d(self, data):
