@@ -11,6 +11,8 @@
 
 using HanabiVecEnv = rela::VectorEnv<HanabiEnv>;
 
+using namespace torch::indexing;
+
 class HanabiThreadLoop : public rela::ThreadLoop {
  public:
   HanabiThreadLoop(
@@ -41,6 +43,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
 
   void mainLoop() final {
     rela::TensorDict obs = {};
+    std::vector<int> reset_envs;
     torch::Tensor r;
     torch::Tensor t;
     torch::Tensor aoh1 = torch::ones({80, (int)vecEnv_->size(), 838});
