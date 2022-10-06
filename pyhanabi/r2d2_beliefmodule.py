@@ -70,7 +70,7 @@ class R2D2Net(torch.jit.ScriptModule):
     def act(
         self, priv_s: torch.Tensor, hid: Dict[str, torch.Tensor]
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
-        assert priv_s.dim() == 2, "dim should be 2, [batch, dim], get %d" % s.dim()
+        assert priv_s.dim() == 2, "dim should be 2, [batch, dim], get %d" % priv_s.dim()
 
         priv_s = priv_s.unsqueeze(0)
         x = self.net(priv_s)
