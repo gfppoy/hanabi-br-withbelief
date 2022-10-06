@@ -50,7 +50,7 @@ class HanabiThreadLoop : public rela::ThreadLoop {
     torch::Tensor aoh2 = torch::ones({80, (int)vecEnv_->size(), 838});
     torch::Tensor counts = torch::zeros({(int)vecEnv_->size()});
     while (!terminated()) {
-      obs = vecEnv_->reset(obs);
+      std::tie(obs, reset_envs) = vecEnv_->reset(obs);
       for (int i = 0; i < (int)reset_envs.size(); ++i) {
          counts[reset_envs[i]] = 1;
          aoh1.index({Slice(), reset_envs[i], Slice()}) = 0;
