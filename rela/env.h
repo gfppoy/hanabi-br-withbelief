@@ -45,18 +45,20 @@ class VectorEnv {
   }
 
   // reset envs that have reached end of terminal
-  virtual TensorDict reset(const TensorDict& input) {
+  virtual std::tuple<TensorDict, std::vector<int>> reset(const TensorDict& input) {
     std::vector<TensorDict> batch;
+    std::vector<int> reset_envs;
     for (size_t i = 0; i < envs_.size(); i++) {
       if (envs_[i]->terminated()) {
         TensorDict obs = envs_[i]->reset();
         batch.push_back(obs);
+        reset_envs.push_back(i);
       } else {
         assert(!input.empty());
         batch.push_back(tensor_dict::index(input, i));
       }
     }
-    return tensor_dict::stack(batch, 0);
+    return std::make_tuple(tensor_dict::stack(batch, 0), reset_envs);
   }
 
   // return 'obs', 'reward', 'terminal'
