@@ -275,7 +275,7 @@ class R2D2Agent(torch.jit.ScriptModule):
         
         # src is bs x seq_len x 15, where each of the 15 tokens describe a different observable environment feature
         
-        src = self.belief_module.get_samples_one_player(obs["aoh"].transpose(0,1).reshape(80,-1,838), obs["own_hand"].reshape(-1 125), obs["seq_len"].flatten().long(), device=self.device)
+        src = self.belief_module.get_samples_one_player(obs["aoh"].transpose(0,1).reshape(80,-1,838), obs["own_hand"].reshape(-1, 125), obs["seq_len"].flatten().long(), device=self.device)
         priv_s = priv_s.flatten(0, 1)
 
         assert(torch.all(0 == torch.sum(priv_s[:,:,0:125], -1)))
