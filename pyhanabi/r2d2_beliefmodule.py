@@ -278,8 +278,6 @@ class R2D2Agent(torch.jit.ScriptModule):
         src = self.belief_module.get_samples_one_player(obs["aoh"].transpose(0,1).reshape(80,-1,838), obs["own_hand"].reshape(-1, 125), obs["seq_len"].flatten().long(), device=self.device)
         priv_s = priv_s.flatten(0, 1)
 
-        assert(torch.all(0 == torch.sum(priv_s[:,:,0:125], -1)))
-
         targets = 26 + torch.zeros((src.size(0), 6), dtype=torch.long, device=self.device).detach() # bs x seq_len x 6
         j_card_dist = torch.zeros((src.size(0), 28), dtype=torch.long, device=self.device).detach()
         temp = torch.zeros((src.size(0)), dtype=torch.long, device=self.device).detach()
